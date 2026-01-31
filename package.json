@@ -16,7 +16,6 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:pr-comments.fetch",
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
@@ -29,6 +28,10 @@
       {
         "command": "pr-comments.clear",
         "title": "PR Comments: Clear Comments"
+      },
+      {
+        "command": "pr-comments.showLog",
+        "title": "PR Comments: Show Log"
       }
     ],
     "configuration": {
@@ -37,12 +40,38 @@
         "prComments.githubToken": {
           "type": "string",
           "default": "",
-          "description": "GitHub Personal Access Token for API access"
+          "description": "GitHub Personal Access Token for API access",
+          "scope": "application"
         },
         "prComments.autoFetch": {
           "type": "boolean",
           "default": false,
           "description": "Automatically fetch PR comments on workspace open"
+        },
+        "prComments.highlightColor": {
+          "type": "string",
+          "default": "rgba(255, 200, 0, 0.2)",
+          "description": "Background color for highlighted lines with comments (CSS color value)"
+        },
+        "prComments.commentIcon": {
+          "type": "string",
+          "default": "💬",
+          "description": "Icon/emoji to display at the end of commented lines"
+        },
+        "prComments.showResolved": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show resolved comments (when available)"
+        },
+        "prComments.refreshInterval": {
+          "type": "number",
+          "default": 0,
+          "description": "Auto-refresh interval in minutes (0 to disable)"
+        },
+        "prComments.githubEnterpriseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub Enterprise Server URL (e.g., https://github.mycompany.com). Leave empty for github.com"
         }
       }
     }
@@ -51,14 +80,20 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
