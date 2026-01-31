@@ -1,0 +1,67 @@
+{
+  "name": "pr-comments-viewer",
+  "displayName": "PR Comments Viewer",
+  "description": "View GitHub PR review comments directly in your IDE",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publisher": "pr-comments-viewer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AnuprajGudisse/git_commit"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:pr-comments.fetch",
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pr-comments.fetch",
+        "title": "PR Comments: Fetch PR Comments"
+      },
+      {
+        "command": "pr-comments.clear",
+        "title": "PR Comments: Clear Comments"
+      }
+    ],
+    "configuration": {
+      "title": "PR Comments Viewer",
+      "properties": {
+        "prComments.githubToken": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub Personal Access Token for API access"
+        },
+        "prComments.autoFetch": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically fetch PR comments on workspace open"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.0"
+  }
+}
