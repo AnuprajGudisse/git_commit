@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { PRComment } from '../models/comment';
 import { getRepositoryInfo, selectWorkspaceFolder, getAllWorkspaceFolders } from '../git/repository';
 import { fetchPRCommentsWithRetry } from '../github/client';
-import { updateDecorations } from '../decorators/lineHighlight';
+import { updateDecorations, clearDecorations } from '../decorators/lineHighlight';
 import { logInfo, showAndLog } from '../utils/logger';
 import { hasValidToken } from '../utils/config';
 
@@ -129,10 +129,7 @@ export function clearComments(): void {
     commentsByFile.clear();
     const editor = vscode.window.activeTextEditor;
     if (editor) {
-        editor.setDecorations(
-            vscode.window.createTextEditorDecorationType({}),
-            []
-        );
+        clearDecorations(editor);
     }
     showAndLog('PR comments cleared', 'info');
 }

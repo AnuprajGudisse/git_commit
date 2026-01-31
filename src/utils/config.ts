@@ -37,11 +37,49 @@ export function getConfig(): ExtensionConfig {
 export function getGitHubApiBaseUrl(): string {
     const config = getConfig();
     if (config.githubEnterpriseUrl) {
-        // GitHub Enterprise API is at /api/v3
-        const baseUrl = config.githubEnterpriseUrl.replace(/\/$/, '');
-        return `${baseUrl}/api/v3`;
+        // Validate URL format before using
+        const sanitizedUrl = sanitizeUrl(config.githubEnterpriseUrl);
+        if (sanitizedUrl) {
+            return `${sanitizedUrl}/api/v3`;
+        }
     }
     return 'https://api.github.com';
+}
+
+function sanitizeUrl(url: string): string | null {
+    try {
+        const parsed = new URL(url);
+        // Only allow http/https protocols
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            return null;
+        }
+        // Return normalized URL without trailing slash
+        return `${parsed.protocol}//${parsed.host}`;
+    } catch {
+        return null;
+    }
+}
+
+function isValidCssColor(color: string): boolean {
+    // Basic validation for CSS color values
+    // Allows: hex (#fff, #ffffff), rgb/rgba, hsl/hsla, named colors
+    const hexPattern = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+    const rgbPattern = /^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[\d.]+)?\s*\)$/;
+    const hslPattern = /^hsla?\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*(,\s*[\d.]+)?\s*\)$/;
+    const namedColors = /^(transparent|currentcolor|inherit|initial|unset|[a-z]+)$/i;
+    
+    return hexPattern.test(color) || 
+           rgbPattern.test(color) || 
+           hslPattern.test(color) || 
+           namedColors.test(color);
+}
+
+export function getValidatedHighlightColor(): string {
+    const config = getConfig();
+    if (isValidCssColor(config.highlightColor)) {
+        return config.highlightColor;
+    }
+    return DEFAULT_CONFIG.highlightColor;
 }
 
 export function hasValidToken(): boolean {

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { PRComment } from '../models/comment';
-import { getConfig } from '../utils/config';
+import { getConfig, getValidatedHighlightColor } from '../utils/config';
 
 let decorationType: vscode.TextEditorDecorationType | undefined;
 
@@ -8,7 +8,7 @@ export function createDecorationType(): vscode.TextEditorDecorationType {
     const config = getConfig();
     
     decorationType = vscode.window.createTextEditorDecorationType({
-        backgroundColor: config.highlightColor,
+        backgroundColor: getValidatedHighlightColor(),
         isWholeLine: true,
         overviewRulerColor: 'orange',
         overviewRulerLane: vscode.OverviewRulerLane.Right,
@@ -80,12 +80,29 @@ export function updateDecorations(
     editor.setDecorations(getDecorationType(), decorations);
 }
 
+function escapeMarkdown(text: string): string {
+    // Escape special markdown characters to prevent injection
+    return text
+        .replace(/\\/g, '\\\\')
+        .replace(/\*/g, '\\*')
+        .replace(/_/g, '\\_')
+        .replace(/\[/g, '\\[')
+        .replace(/\]/g, '\\]')
+        .replace(/\(/g, '\\(')
+        .replace(/\)/g, '\\)')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 function createHoverMessage(comment: PRComment): vscode.MarkdownString {
     const hoverMessage = new vscode.MarkdownString();
-    hoverMessage.isTrusted = true;
+    // Set to false to prevent command execution from comment content
+    hoverMessage.isTrusted = false;
+    hoverMessage.supportHtml = false;
     
-    // Header with user and timestamp
-    let header = `**@${comment.user}**`;
+    // Header with user and timestamp - escape user to prevent injection
+    const safeUser = escapeMarkdown(comment.user);
+    let header = `**@${safeUser}**`;
     if (comment.createdAt) {
         const date = new Date(comment.createdAt);
         header += ` • ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
@@ -93,6 +110,8 @@ function createHoverMessage(comment: PRComment): vscode.MarkdownString {
     
     hoverMessage.appendMarkdown(header + '\n\n');
     hoverMessage.appendMarkdown('---\n\n');
+    // Comment body is from GitHub API - render as-is but untrusted
+    // GitHub already sanitizes markdown, and isTrusted=false prevents command links
     hoverMessage.appendMarkdown(comment.body);
     
     return hoverMessage;

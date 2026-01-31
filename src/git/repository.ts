@@ -1,7 +1,38 @@
 import * as vscode from 'vscode';
 import { execSync } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
 import { RepositoryInfo } from '../models/comment';
 import { logInfo, logError, logWarn } from '../utils/logger';
+
+/**
+ * Validates that a path is safe to use as a working directory for git commands.
+ * Prevents path traversal and ensures the path exists.
+ */
+function isValidWorkingDirectory(cwd: string): boolean {
+    try {
+        // Resolve to absolute path
+        const resolved = path.resolve(cwd);
+        
+        // Check path doesn't contain suspicious patterns
+        if (cwd.includes('\0') || cwd.includes('\n') || cwd.includes('\r')) {
+            logWarn(`Invalid characters in path: ${cwd}`);
+            return false;
+        }
+        
+        // Verify the directory exists and is actually a directory
+        const stats = fs.statSync(resolved);
+        if (!stats.isDirectory()) {
+            logWarn(`Path is not a directory: ${cwd}`);
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        logError(`Path validation failed: ${error}`);
+        return false;
+    }
+}
 
 export function parseGitRemoteUrl(remoteUrl: string): { owner: string; repo: string } | null {
     // Handle both SSH and HTTPS URLs
@@ -48,11 +79,17 @@ export function extractPRNumberFromBranch(branchName: string): number | null {
 }
 
 export function getGitRemoteUrl(cwd: string): string | null {
+    if (!isValidWorkingDirectory(cwd)) {
+        return null;
+    }
+    
     try {
         const remoteUrl = execSync('git config --get remote.origin.url', { 
             cwd, 
             encoding: 'utf8',
             timeout: 5000,
+            // Limit output size to prevent memory issues
+            maxBuffer: 1024 * 10, // 10KB should be plenty for a URL
         }).trim();
         logInfo(`Git remote URL: ${remoteUrl}`);
         return remoteUrl;
@@ -63,11 +100,16 @@ export function getGitRemoteUrl(cwd: string): string | null {
 }
 
 export function getCurrentBranch(cwd: string): string | null {
+    if (!isValidWorkingDirectory(cwd)) {
+        return null;
+    }
+    
     try {
         const branch = execSync('git rev-parse --abbrev-ref HEAD', { 
             cwd, 
             encoding: 'utf8',
             timeout: 5000,
+            maxBuffer: 1024 * 10,
         }).trim();
         logInfo(`Current branch: ${branch}`);
         return branch;
@@ -78,11 +120,16 @@ export function getCurrentBranch(cwd: string): string | null {
 }
 
 export function isGitRepository(cwd: string): boolean {
+    if (!isValidWorkingDirectory(cwd)) {
+        return false;
+    }
+    
     try {
         execSync('git rev-parse --is-inside-work-tree', { 
             cwd, 
             encoding: 'utf8',
             timeout: 5000,
+            maxBuffer: 1024,
         });
         return true;
     } catch {
