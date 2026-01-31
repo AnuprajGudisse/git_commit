@@ -28,8 +28,12 @@ View GitHub Pull Request review comments directly in your IDE, so you can addres
 
 Before using the extension, you need to configure your GitHub Personal Access Token:
 
-1. Generate a GitHub token at https://github.com/settings/tokens
-   - Required scopes: `repo` (for private repos) or `public_repo` (for public repos only)
+1. Generate a GitHub token:
+   - **Recommended**: Use fine-grained personal access tokens at https://github.com/settings/personal-access-tokens/new
+     - Select the repository you want to access
+     - Grant "Pull requests" read access
+   - **Alternative**: Use classic tokens at https://github.com/settings/tokens
+     - Required scopes: `repo` (for private repos) or `public_repo` (for public repos only)
 2. In VS Code, go to Settings (File > Preferences > Settings)
 3. Search for "PR Comments"
 4. Set `prComments.githubToken` to your token

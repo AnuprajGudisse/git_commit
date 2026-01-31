@@ -102,7 +102,7 @@ async function fetchPRComments() {
 
         // Process and store comments
         for (const comment of comments) {
-            if (comment.path && comment.line) {
+            if (comment.path && comment.line !== undefined && comment.line !== null) {
                 const prComment: PRComment = {
                     path: comment.path,
                     line: comment.line,
@@ -202,9 +202,10 @@ async function getRepositoryInfo(): Promise<{ owner: string; repo: string; prNum
         // Get current branch
         const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd, encoding: 'utf8' }).trim();
 
-        // Try to extract PR number from branch name (common patterns: pr-123, PR-123, 123-feature, etc.)
-        const prMatch = branch.match(/(?:pr[_-]?|pull[_-]?)?(\d+)/i);
-        const prNumber = prMatch ? parseInt(prMatch[1], 10) : null;
+        // Try to extract PR number from branch name (common patterns: pr-123, PR-123, pull-123, etc.)
+        // Match patterns at start or after delimiter to avoid false positives like 'node-20-upgrade'
+        const prMatch = branch.match(/^(?:pr[_-]?|pull[_-]?)?(\d+)|(?:[_-])(?:pr[_-]?|pull[_-]?)(\d+)/i);
+        const prNumber = prMatch ? parseInt(prMatch[1] || prMatch[2], 10) : null;
 
         // If no PR number in branch, try to get it from git config or ask user
         if (!prNumber) {
