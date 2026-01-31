@@ -20,20 +20,145 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "prCommentsView",
+          "name": "PR Comments",
+          "when": "prComments.hasComments"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "pr-comments.fetch",
-        "title": "PR Comments: Fetch PR Comments"
+        "title": "PR Comments: Fetch PR Comments",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "pr-comments.clear",
-        "title": "PR Comments: Clear Comments"
+        "title": "PR Comments: Clear Comments",
+        "icon": "$(clear-all)"
       },
       {
         "command": "pr-comments.showLog",
         "title": "PR Comments: Show Log"
+      },
+      {
+        "command": "pr-comments.reply",
+        "title": "Reply to Comment",
+        "icon": "$(reply)"
+      },
+      {
+        "command": "pr-comments.addComment",
+        "title": "PR Comments: Add Comment at Cursor",
+        "icon": "$(add)"
+      },
+      {
+        "command": "pr-comments.filterByReviewer",
+        "title": "PR Comments: Filter by Reviewer",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "pr-comments.filterByStatus",
+        "title": "PR Comments: Filter by Status"
+      },
+      {
+        "command": "pr-comments.clearFilters",
+        "title": "PR Comments: Clear Filters"
+      },
+      {
+        "command": "pr-comments.goToComment",
+        "title": "Go to Comment"
+      },
+      {
+        "command": "pr-comments.refresh",
+        "title": "Refresh Comments",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "pr-comments.showStats",
+        "title": "PR Comments: Show Statistics"
+      },
+      {
+        "command": "pr-comments.toggleAutoRefresh",
+        "title": "PR Comments: Toggle Auto-Refresh",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "pr-comments.nextComment",
+        "title": "PR Comments: Go to Next Comment",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "pr-comments.previousComment",
+        "title": "PR Comments: Go to Previous Comment",
+        "icon": "$(arrow-up)"
       }
     ],
+    "keybindings": [
+      {
+        "command": "pr-comments.fetch",
+        "key": "ctrl+shift+p f",
+        "mac": "cmd+shift+p f",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "pr-comments.nextComment",
+        "key": "alt+]",
+        "mac": "alt+]",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "pr-comments.previousComment",
+        "key": "alt+[",
+        "mac": "alt+[",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "pr-comments.reply",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "editorTextFocus && prComments.hasRepoInfo"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "pr-comments.refresh",
+          "when": "view == prCommentsView",
+          "group": "navigation"
+        },
+        {
+          "command": "pr-comments.filterByReviewer",
+          "when": "view == prCommentsView",
+          "group": "navigation"
+        },
+        {
+          "command": "pr-comments.clearFilters",
+          "when": "view == prCommentsView"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "pr-comments.reply",
+          "when": "view == prCommentsView && viewItem == thread",
+          "group": "inline"
+        },
+        {
+          "command": "pr-comments.reply",
+          "when": "view == prCommentsView && viewItem == comment",
+          "group": "inline"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "pr-comments.addComment",
+          "group": "prComments",
+          "when": "prComments.hasRepoInfo"
+        }
+      ]
+    },
     "configuration": {
       "title": "PR Comments Viewer",
       "properties": {
@@ -66,7 +191,9 @@
         "prComments.refreshInterval": {
           "type": "number",
           "default": 0,
-          "description": "Auto-refresh interval in minutes (0 to disable)"
+          "minimum": 0,
+          "maximum": 60,
+          "description": "Auto-refresh interval in minutes (0 to disable, max 60)"
         },
         "prComments.githubEnterpriseUrl": {
           "type": "string",

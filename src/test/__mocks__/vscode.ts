@@ -105,3 +105,39 @@ export interface DecorationOptions {
 export type TextEditorDecorationType = {
     dispose: () => void;
 };
+
+// TreeItem for TreeView support
+export enum TreeItemCollapsibleState {
+    None = 0,
+    Collapsed = 1,
+    Expanded = 2,
+}
+
+export class TreeItem {
+    label?: string;
+    description?: string;
+    tooltip?: string | MarkdownString;
+    iconPath?: unknown;
+    contextValue?: string;
+    command?: unknown;
+    collapsibleState?: TreeItemCollapsibleState;
+
+    constructor(label: string, collapsibleState?: TreeItemCollapsibleState) {
+        this.label = label;
+        this.collapsibleState = collapsibleState;
+    }
+}
+
+export class ThemeIcon {
+    constructor(public readonly id: string, public readonly color?: ThemeColor) {}
+}
+
+export class ThemeColor {
+    constructor(public readonly id: string) {}
+}
+
+export class EventEmitter<T> {
+    event: unknown;
+    fire(_data?: T): void {}
+    dispose(): void {}
+}

@@ -5,6 +5,7 @@ import { fetchPRCommentsWithRetry } from '../github/client';
 import { updateDecorations, clearDecorations } from '../decorators/lineHighlight';
 import { logInfo, showAndLog } from '../utils/logger';
 import { hasValidToken } from '../utils/config';
+import { setCurrentRepoInfo } from './commentActions';
 
 // Global storage for comments
 const commentsByFile = new Map<string, PRComment[]>();
@@ -101,6 +102,10 @@ export async function fetchPRComments(): Promise<boolean> {
             }
 
             logInfo(`Stored comments for ${commentsByFile.size} files`);
+
+            // Store repo info for comment actions
+            setCurrentRepoInfo({ owner, repo, prNumber });
+            vscode.commands.executeCommand('setContext', 'prComments.hasRepoInfo', true);
 
             progress.report({ increment: 100, message: 'Done!' });
 
