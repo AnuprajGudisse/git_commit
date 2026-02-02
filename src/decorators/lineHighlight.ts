@@ -103,18 +103,62 @@ function createHoverMessage(comment: PRComment): vscode.MarkdownString {
     // Header with user and timestamp - escape user to prevent injection
     const safeUser = escapeMarkdown(comment.user);
     let header = `**@${safeUser}**`;
+    
+    // Add author association badge if available
+    if (comment.authorAssociation && comment.authorAssociation !== 'NONE') {
+        const badge = getAuthorBadge(comment.authorAssociation);
+        if (badge) {
+            header += ` ${badge}`;
+        }
+    }
+    
     if (comment.createdAt) {
         const date = new Date(comment.createdAt);
         header += ` • ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     }
     
     hoverMessage.appendMarkdown(header + '\n\n');
+    
+    // Show diff context if available
+    if (comment.diffHunk) {
+        hoverMessage.appendMarkdown('```diff\n');
+        // Show last few lines of diff hunk for context
+        const diffLines = comment.diffHunk.split('\n');
+        const contextLines = diffLines.slice(-5); // Last 5 lines
+        hoverMessage.appendMarkdown(contextLines.join('\n'));
+        hoverMessage.appendMarkdown('\n```\n\n');
+    }
+    
     hoverMessage.appendMarkdown('---\n\n');
     // Comment body is from GitHub API - render as-is but untrusted
     // GitHub already sanitizes markdown, and isTrusted=false prevents command links
     hoverMessage.appendMarkdown(comment.body);
     
+    // Show reply indicator
+    if (comment.inReplyToId) {
+        hoverMessage.appendMarkdown('\n\n*↳ Reply to thread*');
+    }
+    
     return hoverMessage;
+}
+
+function getAuthorBadge(association: string): string {
+    switch (association) {
+        case 'OWNER':
+            return '👑';
+        case 'MEMBER':
+            return '🏢';
+        case 'COLLABORATOR':
+            return '🤝';
+        case 'CONTRIBUTOR':
+            return '✨';
+        case 'FIRST_TIME_CONTRIBUTOR':
+            return '🆕';
+        case 'FIRST_TIMER':
+            return '🎉';
+        default:
+            return '';
+    }
 }
 
 export function clearDecorations(editor: vscode.TextEditor): void {

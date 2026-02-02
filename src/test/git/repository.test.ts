@@ -140,9 +140,9 @@ describe('extractPRNumberFromBranch', () => {
             expect(extractPRNumberFromBranch('feature/add-login')).toBeNull();
         });
 
-        it('should extract from node-20-upgrade', () => {
-            // This branch name includes a numeric component that is treated as a PR number
-            expect(extractPRNumberFromBranch('node-20-upgrade')).toBe(20);
+        it('should not extract from node-20-upgrade (not a PR pattern)', () => {
+            // This branch name has a number but doesn't follow PR naming conventions
+            expect(extractPRNumberFromBranch('node-20-upgrade')).toBeNull();
         });
 
         it('should return null for empty string', () => {
