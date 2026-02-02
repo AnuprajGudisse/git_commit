@@ -57,9 +57,28 @@ export function parseGitRemoteUrl(remoteUrl: string): { owner: string; repo: str
     return null;
 }
 
+/**
+ * Extracts PR number from a branch name following GitHub PR naming conventions.
+ * 
+ * Only matches branch names that follow specific PR-related patterns to avoid
+ * false positives from version numbers or other numeric components.
+ * 
+ * Supported patterns:
+ * - pr-123, PR-123, pr_123, pr123 (starts with 'pr')
+ * - pull-123, pull_123, pull123 (starts with 'pull')
+ * - 123-feature-name (starts with number followed by delimiter)
+ * - feature-pr-123, feature-pull-123 (contains 'pr' or 'pull' after delimiter)
+ * 
+ * Non-matching examples:
+ * - 'node-20-upgrade' → null (number not in PR context)
+ * - 'feature/add-login' → null (no PR pattern)
+ * - 'main', 'develop' → null (standard branch names)
+ * 
+ * @param branchName - The branch name to parse
+ * @returns The PR number if found, null otherwise
+ */
 export function extractPRNumberFromBranch(branchName: string): number | null {
     // Match patterns at start or after delimiter to avoid false positives
-    // Patterns: pr-123, PR-123, pull-123, pull_123, 123-feature-name
     const patterns = [
         /^pr[_-]?(\d+)/i,           // pr-123, pr_123, pr123
         /^pull[_-]?(\d+)/i,         // pull-123, pull_123, pull123
