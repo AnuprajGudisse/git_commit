@@ -393,7 +393,7 @@ export async function showThreadStatsCommand(): Promise<void> {
         `✅ Resolved: ${resolvedThreads}`,
         `❌ Unresolved: ${unresolvedThreads}`,
         '',
-        unresolvedThreads > 0 
+        totalThreads > 0 && unresolvedThreads > 0 
             ? `${Math.round((resolvedThreads / totalThreads) * 100)}% complete`
             : '🎉 All threads resolved!',
     ].join('\n');
