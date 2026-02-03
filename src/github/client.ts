@@ -460,3 +460,433 @@ export async function getPRReviewers(
         return [];
     }
 }
+
+// ============================================================================
+// Phase 4: Resolve/Unresolve, Issue Comments, Multi-PR Support
+// ============================================================================
+
+export interface ResolveResult {
+    success: boolean;
+    error?: string;
+}
+
+/**
+ * Resolve a review thread using GraphQL API
+ * Note: GitHub REST API doesn't support resolving threads, must use GraphQL
+ */
+export async function resolveThread(
+    owner: string,
+    repo: string,
+    threadId: string,
+    token?: string
+): Promise<ResolveResult> {
+    const config = getConfig();
+    const authToken = token || config.githubToken;
+
+    if (!authToken) {
+        return { success: false, error: 'GitHub token is not configured.' };
+    }
+
+    try {
+        const octokit = createOctokitClient(authToken);
+        logInfo(`Resolving thread ${threadId}`);
+
+        // Use GraphQL to resolve the thread
+        await octokit.graphql(`
+            mutation ResolveThread($threadId: ID!) {
+                resolveReviewThread(input: { threadId: $threadId }) {
+                    thread {
+                        isResolved
+                    }
+                }
+            }
+        `, { threadId });
+
+        logInfo(`Successfully resolved thread ${threadId}`);
+        return { success: true };
+    } catch (error) {
+        logError(`Failed to resolve thread: ${error}`);
+        
+        if (isGitHubError(error)) {
+            if (error.status === 401) {
+                return { success: false, error: 'Authentication failed.' };
+            }
+            if (error.status === 403) {
+                return { success: false, error: 'Permission denied.' };
+            }
+        }
+
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to resolve thread',
+        };
+    }
+}
+
+/**
+ * Unresolve a review thread using GraphQL API
+ */
+export async function unresolveThread(
+    owner: string,
+    repo: string,
+    threadId: string,
+    token?: string
+): Promise<ResolveResult> {
+    const config = getConfig();
+    const authToken = token || config.githubToken;
+
+    if (!authToken) {
+        return { success: false, error: 'GitHub token is not configured.' };
+    }
+
+    try {
+        const octokit = createOctokitClient(authToken);
+        logInfo(`Unresolving thread ${threadId}`);
+
+        await octokit.graphql(`
+            mutation UnresolveThread($threadId: ID!) {
+                unresolveReviewThread(input: { threadId: $threadId }) {
+                    thread {
+                        isResolved
+                    }
+                }
+            }
+        `, { threadId });
+
+        logInfo(`Successfully unresolved thread ${threadId}`);
+        return { success: true };
+    } catch (error) {
+        logError(`Failed to unresolve thread: ${error}`);
+        
+        if (isGitHubError(error)) {
+            if (error.status === 401) {
+                return { success: false, error: 'Authentication failed.' };
+            }
+            if (error.status === 403) {
+                return { success: false, error: 'Permission denied.' };
+            }
+        }
+
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to unresolve thread',
+        };
+    }
+}
+
+export interface IssueComment {
+    id: number;
+    body: string;
+    user: string;
+    createdAt: string;
+    updatedAt?: string;
+    authorAssociation?: string;
+}
+
+export interface IssueCommentsResult {
+    success: boolean;
+    comments: IssueComment[];
+    error?: string;
+}
+
+/**
+ * Fetch issue/PR conversation comments (not review comments)
+ */
+export async function fetchIssueComments(
+    owner: string,
+    repo: string,
+    prNumber: number,
+    token?: string
+): Promise<IssueCommentsResult> {
+    const config = getConfig();
+    const authToken = token || config.githubToken;
+
+    if (!authToken) {
+        return { success: false, comments: [], error: 'GitHub token is not configured.' };
+    }
+
+    try {
+        const octokit = createOctokitClient(authToken);
+        logInfo(`Fetching issue comments for PR #${prNumber}`);
+
+        const { data } = await octokit.issues.listComments({
+            owner,
+            repo,
+            issue_number: prNumber,
+            per_page: 100,
+        });
+
+        const comments: IssueComment[] = data.map(comment => ({
+            id: comment.id,
+            body: comment.body || '',
+            user: comment.user?.login || 'Unknown',
+            createdAt: comment.created_at,
+            updatedAt: comment.updated_at,
+            authorAssociation: comment.author_association,
+        }));
+
+        logInfo(`Fetched ${comments.length} issue comments`);
+        return { success: true, comments };
+    } catch (error) {
+        logError(`Failed to fetch issue comments: ${error}`);
+        
+        return {
+            success: false,
+            comments: [],
+            error: error instanceof Error ? error.message : 'Failed to fetch issue comments',
+        };
+    }
+}
+
+/**
+ * Post a new issue/PR conversation comment
+ */
+export async function createIssueComment(
+    owner: string,
+    repo: string,
+    prNumber: number,
+    body: string,
+    token?: string
+): Promise<ReplyResult> {
+    const config = getConfig();
+    const authToken = token || config.githubToken;
+
+    if (!authToken) {
+        return { success: false, error: 'GitHub token is not configured.' };
+    }
+
+    if (!body || body.trim().length === 0) {
+        return { success: false, error: 'Comment body cannot be empty.' };
+    }
+
+    try {
+        const octokit = createOctokitClient(authToken);
+        logInfo(`Creating issue comment on PR #${prNumber}`);
+
+        const { data } = await octokit.issues.createComment({
+            owner,
+            repo,
+            issue_number: prNumber,
+            body: body.trim(),
+        });
+
+        logInfo(`Successfully created issue comment ${data.id}`);
+
+        return {
+            success: true,
+            comment: {
+                path: '',
+                line: 0,
+                body: data.body || '',
+                user: data.user?.login || 'Unknown',
+                id: data.id,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at,
+            },
+        };
+    } catch (error) {
+        logError(`Failed to create issue comment: ${error}`);
+        
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to create comment',
+        };
+    }
+}
+
+export interface PRInfo {
+    number: number;
+    title: string;
+    state: string;
+    author: string;
+    createdAt: string;
+    updatedAt: string;
+    headBranch: string;
+    baseBranch: string;
+    draft: boolean;
+    reviewCommentCount: number;
+}
+
+export interface ListPRsResult {
+    success: boolean;
+    prs: PRInfo[];
+    error?: string;
+}
+
+/**
+ * List open PRs for a repository (for multi-PR support)
+ */
+export async function listOpenPRs(
+    owner: string,
+    repo: string,
+    token?: string
+): Promise<ListPRsResult> {
+    const config = getConfig();
+    const authToken = token || config.githubToken;
+
+    if (!authToken) {
+        return { success: false, prs: [], error: 'GitHub token is not configured.' };
+    }
+
+    try {
+        const octokit = createOctokitClient(authToken);
+        logInfo(`Fetching open PRs for ${owner}/${repo}`);
+
+        const { data } = await octokit.pulls.list({
+            owner,
+            repo,
+            state: 'open',
+            per_page: 50,
+            sort: 'updated',
+            direction: 'desc',
+        });
+
+        const prs: PRInfo[] = data.map(pr => ({
+            number: pr.number,
+            title: pr.title,
+            state: pr.state,
+            author: pr.user?.login || 'Unknown',
+            createdAt: pr.created_at,
+            updatedAt: pr.updated_at,
+            headBranch: pr.head.ref,
+            baseBranch: pr.base.ref,
+            draft: pr.draft || false,
+            reviewCommentCount: 0, // Will be populated when fetching comments
+        }));
+
+        logInfo(`Found ${prs.length} open PRs`);
+        return { success: true, prs };
+    } catch (error) {
+        logError(`Failed to list PRs: ${error}`);
+        
+        return {
+            success: false,
+            prs: [],
+            error: error instanceof Error ? error.message : 'Failed to list PRs',
+        };
+    }
+}
+
+/**
+ * Fetch comments with thread resolution status using GraphQL
+ */
+export async function fetchCommentsWithThreads(
+    owner: string,
+    repo: string,
+    prNumber: number,
+    token?: string
+): Promise<FetchResult & { threads: Map<number, { threadId: string; resolved: boolean }> }> {
+    const config = getConfig();
+    const authToken = token || config.githubToken;
+
+    if (!authToken) {
+        return { 
+            success: false, 
+            comments: [], 
+            threads: new Map(),
+            error: 'GitHub token is not configured.' 
+        };
+    }
+
+    try {
+        const octokit = createOctokitClient(authToken);
+        logInfo(`Fetching comments with thread info for PR #${prNumber}`);
+
+        // Use GraphQL to get thread resolution status
+        const response = await octokit.graphql<{
+            repository: {
+                pullRequest: {
+                    reviewThreads: {
+                        nodes: Array<{
+                            id: string;
+                            isResolved: boolean;
+                            comments: {
+                                nodes: Array<{
+                                    databaseId: number;
+                                    path: string;
+                                    line: number | null;
+                                    body: string;
+                                    author: { login: string } | null;
+                                    createdAt: string;
+                                    updatedAt: string;
+                                    replyTo: { databaseId: number } | null;
+                                    diffHunk: string;
+                                    commit: { oid: string } | null;
+                                    authorAssociation: string;
+                                }>;
+                            };
+                        }>;
+                    };
+                };
+            };
+        }>(`
+            query GetPRThreads($owner: String!, $repo: String!, $prNumber: Int!) {
+                repository(owner: $owner, name: $repo) {
+                    pullRequest(number: $prNumber) {
+                        reviewThreads(first: 100) {
+                            nodes {
+                                id
+                                isResolved
+                                comments(first: 100) {
+                                    nodes {
+                                        databaseId
+                                        path
+                                        line
+                                        body
+                                        author { login }
+                                        createdAt
+                                        updatedAt
+                                        replyTo { databaseId }
+                                        diffHunk
+                                        commit { oid }
+                                        authorAssociation
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        `, { owner, repo, prNumber });
+
+        const comments: PRComment[] = [];
+        const threads = new Map<number, { threadId: string; resolved: boolean }>();
+
+        for (const thread of response.repository.pullRequest.reviewThreads.nodes) {
+            for (const comment of thread.comments.nodes) {
+                comments.push({
+                    path: comment.path,
+                    line: comment.line || 0,
+                    body: comment.body,
+                    user: comment.author?.login || 'Unknown',
+                    id: comment.databaseId,
+                    createdAt: comment.createdAt,
+                    updatedAt: comment.updatedAt,
+                    inReplyToId: comment.replyTo?.databaseId,
+                    resolved: thread.isResolved,
+                    diffHunk: comment.diffHunk,
+                    commitId: comment.commit?.oid,
+                    authorAssociation: comment.authorAssociation,
+                });
+
+                // Map comment ID to thread info
+                threads.set(comment.databaseId, {
+                    threadId: thread.id,
+                    resolved: thread.isResolved,
+                });
+            }
+        }
+
+        logInfo(`Fetched ${comments.length} comments in ${threads.size} threads`);
+        return { success: true, comments, threads };
+    } catch (error) {
+        logError(`Failed to fetch comments with threads: ${error}`);
+        
+        return {
+            success: false,
+            comments: [],
+            threads: new Map(),
+            error: error instanceof Error ? error.message : 'Failed to fetch comments',
+        };
+    }
+}

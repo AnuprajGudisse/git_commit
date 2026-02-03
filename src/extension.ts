@@ -24,6 +24,18 @@ import {
     updateStatusBarItem,
     disposeAutoRefresh,
 } from './utils/autoRefresh';
+import {
+    resolveThreadCommand,
+    unresolveThreadCommand,
+    showConversationCommand,
+    addConversationCommentCommand,
+    switchPRCommand,
+    showThreadStatsCommand,
+    toggleThreadResolutionCommand,
+    clearPhase4State,
+    setThreadMap,
+} from './commands/phase4Commands';
+import { fetchCommentsWithThreads } from './github/client';
 
 let statusBarItem: vscode.StatusBarItem | undefined;
 
@@ -49,6 +61,28 @@ export function activate(context: vscode.ExtensionContext) {
             treeProvider.setComments(getCommentsByFile());
             // Show TreeView
             vscode.commands.executeCommand('setContext', 'prComments.hasComments', true);
+            
+            // Phase 4: Fetch thread info for resolve/unresolve
+            const repoInfo = getCurrentRepoInfo();
+            if (repoInfo && repoInfo.prNumber) {
+                const threadResult = await fetchCommentsWithThreads(
+                    repoInfo.owner,
+                    repoInfo.repo,
+                    repoInfo.prNumber
+                );
+                if (threadResult.success) {
+                    setThreadMap(threadResult.threads);
+                }
+            }
+        }
+    });
+
+    // Phase 4: Fetch with specific PR number (for multi-PR support)
+    const fetchWithPRCmd = vscode.commands.registerCommand('pr-comments.fetchWithPR', async (prNumber: number) => {
+        const repoInfo = getCurrentRepoInfo();
+        if (repoInfo) {
+            setCurrentRepoInfo({ ...repoInfo, prNumber });
+            await vscode.commands.executeCommand('pr-comments.fetch');
         }
     });
 
@@ -56,6 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
     const clearCommand = vscode.commands.registerCommand('pr-comments.clear', () => {
         clearCommentsStorage();
         setCurrentRepoInfo(null);
+        clearPhase4State();
         const editor = vscode.window.activeTextEditor;
         if (editor) {
             clearDecorations(editor);
@@ -65,6 +100,15 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand('setContext', 'prComments.hasRepoInfo', false);
         vscode.window.showInformationMessage('PR comments cleared');
     });
+
+    // Phase 4 commands
+    const resolveThreadCmd = vscode.commands.registerCommand('pr-comments.resolveThread', resolveThreadCommand);
+    const unresolveThreadCmd = vscode.commands.registerCommand('pr-comments.unresolveThread', unresolveThreadCommand);
+    const showConversationCmd = vscode.commands.registerCommand('pr-comments.showConversation', showConversationCommand);
+    const addConversationCmd = vscode.commands.registerCommand('pr-comments.addConversationComment', addConversationCommentCommand);
+    const switchPRCmd = vscode.commands.registerCommand('pr-comments.switchPR', switchPRCommand);
+    const threadStatsCmd = vscode.commands.registerCommand('pr-comments.threadStats', showThreadStatsCommand);
+    const toggleResolutionCmd = vscode.commands.registerCommand('pr-comments.toggleResolution', toggleThreadResolutionCommand);
 
     // Register show log command
     const showLogCommand = vscode.commands.registerCommand('pr-comments.showLog', () => {
@@ -174,6 +218,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         fetchCommand,
+        fetchWithPRCmd,
         clearCommand,
         showLogCommand,
         replyCommand,
@@ -186,7 +231,15 @@ export function activate(context: vscode.ExtensionContext) {
         showStatsCmd,
         toggleAutoRefreshCmd,
         nextCommentCmd,
-        prevCommentCmd
+        prevCommentCmd,
+        // Phase 4 commands
+        resolveThreadCmd,
+        unresolveThreadCmd,
+        showConversationCmd,
+        addConversationCmd,
+        switchPRCmd,
+        threadStatsCmd,
+        toggleResolutionCmd
     );
 
     // Create status bar item for auto-refresh

@@ -16,7 +16,7 @@ export const window = {
     })),
     activeTextEditor: undefined,
     onDidChangeActiveTextEditor: jest.fn(),
-    withProgress: jest.fn((options, task) => task({ report: jest.fn() })),
+    withProgress: jest.fn((_options, task) => Promise.resolve(task({ report: jest.fn() }))),
 };
 
 export const workspace = {

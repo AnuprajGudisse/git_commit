@@ -94,6 +94,39 @@
         "command": "pr-comments.previousComment",
         "title": "PR Comments: Go to Previous Comment",
         "icon": "$(arrow-up)"
+      },
+      {
+        "command": "pr-comments.resolveThread",
+        "title": "PR Comments: Resolve Thread",
+        "icon": "$(check)"
+      },
+      {
+        "command": "pr-comments.unresolveThread",
+        "title": "PR Comments: Unresolve Thread",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "pr-comments.showConversation",
+        "title": "PR Comments: Show PR Conversation"
+      },
+      {
+        "command": "pr-comments.addConversationComment",
+        "title": "PR Comments: Add Conversation Comment",
+        "icon": "$(comment)"
+      },
+      {
+        "command": "pr-comments.switchPR",
+        "title": "PR Comments: Switch PR",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "pr-comments.threadStats",
+        "title": "PR Comments: Show Thread Statistics"
+      },
+      {
+        "command": "pr-comments.toggleResolution",
+        "title": "Toggle Thread Resolution",
+        "icon": "$(check)"
       }
     ],
     "keybindings": [
@@ -130,9 +163,22 @@
           "group": "navigation"
         },
         {
+          "command": "pr-comments.switchPR",
+          "when": "view == prCommentsView",
+          "group": "navigation"
+        },
+        {
           "command": "pr-comments.filterByReviewer",
           "when": "view == prCommentsView",
           "group": "navigation"
+        },
+        {
+          "command": "pr-comments.showConversation",
+          "when": "view == prCommentsView"
+        },
+        {
+          "command": "pr-comments.threadStats",
+          "when": "view == prCommentsView"
         },
         {
           "command": "pr-comments.clearFilters",
@@ -148,6 +194,11 @@
         {
           "command": "pr-comments.reply",
           "when": "view == prCommentsView && viewItem == comment",
+          "group": "inline"
+        },
+        {
+          "command": "pr-comments.toggleResolution",
+          "when": "view == prCommentsView && viewItem == thread",
           "group": "inline"
         }
       ],
